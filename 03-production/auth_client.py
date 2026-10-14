@@ -13,8 +13,12 @@ Cách chạy (cần auth_server.py đang chạy ở terminal khác):
 from __future__ import annotations
 
 import asyncio
-
 import os
+import sys
+
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
 from mcp import ClientSession
 from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
@@ -28,21 +32,23 @@ async def main() -> None:
         headers={"Authorization": f"Bearer {TOKEN}"},
     )
 
-    async with http_client:
-        async with streamable_http_client(SERVER_URL, http_client=http_client) as (
+    async with (
+        http_client,
+        streamable_http_client(SERVER_URL, http_client=http_client) as (
             read,
             write,
-        ):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
+        ),
+        ClientSession(read, write) as session,
+    ):
+        await session.initialize()
 
-                tools = await session.list_tools()
-                print("Tools (có auth):")
-                for t in tools.tools:
-                    print(f"  - {t.name}: {t.description}")
+        tools = await session.list_tools()
+        print("Tools (có auth):")
+        for t in tools.tools:
+            print(f"  - {t.name}: {t.description}")
 
-                result = await session.call_tool("get_weather", {"city": "Hanoi"})
-                print(f"\nKết quả: {result.content[0].text}")
+        result = await session.call_tool("get_weather", {"city": "Hanoi"})
+        print(f"\nKết quả: {result.content[0].text}")
 
 
 if __name__ == "__main__":

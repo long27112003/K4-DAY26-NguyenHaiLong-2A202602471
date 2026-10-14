@@ -241,6 +241,24 @@ Ví dụ trên chỉ demo **lớp giao thức** (không cần API key). Trong pr
 claude mcp add weather -- python /đường/dẫn/tới/weather_server.py
 ```
 
+Repo có sẵn cấu hình mẫu [`.mcp.json.example`](../.mcp.json.example). Trên Windows,
+mở PowerShell tại thư mục gốc repo, kích hoạt `.venv`, đăng ký MCP rồi khởi động
+Claude Code:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+claude mcp add weather --scope local -- python 02-mcp-basics/weather_server.py
+claude mcp list
+claude
+```
+
+Kết quả `claude mcp list` phải hiện `weather ... Connected`. Trong Claude Code,
+chạy `/mcp`, rồi hỏi `Dùng tool get_weather kiểm tra thời tiết Hanoi` để xác minh
+Claude thực sự gọi MCP tool.
+
+> Lệnh `claude` phải được chạy từ thư mục gốc repo và trong terminal đã kích hoạt
+> `.venv`, để lệnh `python` trỏ đúng interpreter có cài MCP SDK.
+
 **Gemini CLI**:
 
 ```bash

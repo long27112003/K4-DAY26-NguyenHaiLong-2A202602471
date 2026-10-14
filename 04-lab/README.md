@@ -33,7 +33,7 @@ ADK (Agent Development Kit) đóng vai trò **MCP Client**
 │     → nhận về: get_current_weather, get_forecast, health_check  │
 │                                                                 │
 │  3. TRUYỀN tools cho LLM (Gemini)                               │
-│     Agent(model="gemini-2.5-flash", tools=[weather_tools])      │
+│     Agent(model="gemini-3.8-flash", tools=[weather_tools])      │
 │     → Gemini biết nó có thể gọi 3 tools trên                    │
 │                                                                 │
 │  4. ĐIỀU PHỐI vòng lặp Function Calling                         │
@@ -63,6 +63,16 @@ export WEATHERAPI_KEY="your_weatherapi_key"
 uv run python weather.py
 ```
 
+Windows PowerShell có thể dùng file cấu hình mẫu thay vì để key trong lịch sử lệnh:
+
+```powershell
+cd mcp-server
+Copy-Item .env.example .env
+# Mở .env và thay WEATHERAPI_KEY bằng key thật
+uv sync
+uv run python weather.py
+```
+
 The server will be available at `http://localhost:8085/mcp`.
 
 ### 2. ADK Agent (Client)
@@ -77,6 +87,21 @@ echo "GOOGLE_API_KEY=your_gemini_api_key" > .env
 # Start ADK web interface
 uv run adk web
 ```
+
+Trên Windows PowerShell:
+
+```powershell
+cd mcp-client
+Copy-Item .env.example .env
+# Mở .env và thay GOOGLE_API_KEY bằng Gemini key thật
+uv sync
+uv run python verify_setup.py
+uv run adk web
+```
+
+`verify_setup.py` chỉ báo thành công sau khi kết nối MCP thật, khám phá đủ ba
+tool và gọi được `health_check`. Client cũng có thể dùng `GEMINI_API_KEY` từ
+file `.env` ở thư mục gốc repo.
 
 Open http://localhost:8000 in your browser, select `weather_agent`, and ask about the weather.
 

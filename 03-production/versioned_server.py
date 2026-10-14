@@ -15,7 +15,7 @@ Cách chạy:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from mcp.server.mcpserver import MCPServer
 
@@ -94,7 +94,7 @@ def get_weather_v2(
         "condition": data["condition"],
         "humidity": data["humidity"],
         "wind_speed_kmh": data["wind_speed"],
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     if include_forecast:
         result["forecast"] = data["forecast"]

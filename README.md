@@ -45,6 +45,10 @@ pip install -r requirements.txt
 # MCP demo (không cần API key)
 cd 02-mcp-basics && python weather_client.py
 
+# Đăng ký MCP weather với Claude Code (chạy từ thư mục gốc repo)
+claude mcp add weather --scope local -- python 02-mcp-basics/weather_server.py
+claude mcp list
+
 # Function Calling (cần Gemini API key)
 export GEMINI_API_KEY=...
 cd 01-function-calling && python weather_function_calling.py

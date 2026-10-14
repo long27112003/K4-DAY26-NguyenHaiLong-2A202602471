@@ -9,12 +9,40 @@ Cách chạy:
     python weather_function_calling.py
 """
 
+import os
+import sys
+from pathlib import Path
+
 from google import genai
 from google.genai import types
 
-client = genai.Client()
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
-MODEL = "gemini-2.5-flash"
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+except ImportError:
+    pass
+
+raw_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+if not raw_key or raw_key.strip() in ("...", "your_gemini_api_key", "your_key", "your_google_api_key_here"):
+    raise RuntimeError(
+        "Thiếu GEMINI_API_KEY (hoặc GOOGLE_API_KEY). "
+        "Hãy đặt key trong biến môi trường hoặc file .env ở thư mục gốc repo."
+    )
+
+# Tránh cảnh báo của Google SDK khi môi trường đồng thời có cả hai tên biến.
+if os.getenv("GEMINI_API_KEY") and os.getenv("GOOGLE_API_KEY"):
+    os.environ.pop("GOOGLE_API_KEY", None)
+
+API_KEY = raw_key
+
+client = genai.Client(api_key=API_KEY)
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 SYSTEM_INSTRUCTION = (
     "Bạn là trợ lý thời tiết thân thiện, trả lời bằng tiếng Việt tự nhiên. "

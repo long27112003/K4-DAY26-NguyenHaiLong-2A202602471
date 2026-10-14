@@ -28,6 +28,7 @@ VALID_TOKENS: dict[str, str] = {
     os.environ.get("MCP_AUTH_TOKEN", "dev-token-abc123"): "dev-user",
     "prod-key-xyz789": "prod-service",
 }
+RESOURCE_SERVER_URL = "http://localhost:8000"
 
 
 class StaticTokenVerifier(TokenVerifier):
@@ -41,15 +42,21 @@ class StaticTokenVerifier(TokenVerifier):
         client_id = VALID_TOKENS.get(token)
         if client_id is None:
             return None
-        return AccessToken(token=token, client_id=client_id, scopes=["weather:read"])
+        return AccessToken(
+            token=token,
+            client_id=client_id,
+            scopes=["weather:read"],
+            resource=RESOURCE_SERVER_URL,
+        )
 
 
 # --- MCP Server — logic tool không biết gì về auth --------------------
 mcp = MCPServer(
     "weather-secure",
     auth=AuthSettings(
-        issuer_url="http://localhost:8000",
-        resource_server_url="http://localhost:8000",
+        issuer_url=RESOURCE_SERVER_URL,
+        resource_server_url=RESOURCE_SERVER_URL,
+        validate_token_resource=True,
     ),
     token_verifier=StaticTokenVerifier(),
 )

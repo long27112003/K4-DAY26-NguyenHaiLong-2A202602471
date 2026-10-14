@@ -3,31 +3,44 @@
 Verification script for Weather Agent setup
 Checks if all components are configured correctly
 """
+import asyncio
 import os
 import sys
 from pathlib import Path
 
+CLIENT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = CLIENT_DIR.parents[1]
+
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 def check_environment():
     """Check if .env file exists and is configured"""
     print("🔍 Checking environment configuration...")
-    
-    env_file = Path(".env")
-    if not env_file.exists():
-        print("❌ .env file not found")
-        print("   Run: echo 'GOOGLE_API_KEY=your_key' > .env")
+
+    env_files = [CLIENT_DIR / ".env", REPO_ROOT / ".env"]
+    existing_env_files = [path for path in env_files if path.exists()]
+    if not existing_env_files:
+        print("❌ Không tìm thấy .env trong mcp-client hoặc thư mục gốc repo")
+        print("   Sao chép .env.example thành .env rồi điền API key")
         return False
-    
-    # Check if GOOGLE_API_KEY is set
+
     from dotenv import load_dotenv
-    load_dotenv()
-    
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key or api_key == "your_google_api_key_here":
-        print("❌ GOOGLE_API_KEY not configured in .env")
+
+    for env_file in existing_env_files:
+        load_dotenv(env_file)
+
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    placeholders = {"...", "your_key", "your_gemini_api_key", "your_google_api_key_here"}
+    if not api_key or api_key.strip() in placeholders:
+        print("❌ GOOGLE_API_KEY/GEMINI_API_KEY chưa được cấu hình")
         print("   Get key from: https://aistudio.google.com/apikey")
         return False
-    
-    print(f"✅ GOOGLE_API_KEY configured ({api_key[:10]}...)")
+
+    # Google ADK đọc GOOGLE_API_KEY; dùng lại key của bài 01 khi cần.
+    os.environ.setdefault("GOOGLE_API_KEY", api_key)
+    print("✅ Gemini API key configured (value hidden)")
     return True
 
 def check_dependencies():
@@ -36,7 +49,7 @@ def check_dependencies():
     
     required_packages = [
         ("google.adk", "Google ADK"),
-        ("google.generativeai", "Google Generative AI"),
+        ("google.genai", "Google GenAI SDK"),
         ("mcp", "MCP"),
         ("fastmcp", "FastMCP"),
         ("dotenv", "python-dotenv"),
@@ -54,7 +67,7 @@ def check_dependencies():
     
     if not all_installed:
         print("\n   Install with: uv sync")
-        print("   Or: pip install google-adk google-generativeai mcp fastmcp python-dotenv httpx")
+        print("   Or: pip install google-adk google-genai mcp fastmcp python-dotenv httpx")
     
     return all_installed
 
@@ -69,7 +82,7 @@ def check_agent_structure():
     
     all_exist = True
     for file_path in required_files:
-        path = Path(file_path)
+        path = CLIENT_DIR / file_path
         if path.exists():
             print(f"✅ {file_path}")
         else:
@@ -79,27 +92,42 @@ def check_agent_structure():
     return all_exist
 
 def check_mcp_server():
-    """Check if MCP server is accessible"""
+    """Perform a real MCP handshake and call the health_check tool."""
     print("\n🔍 Checking MCP server connectivity...")
 
     # Cùng URL mà weather_agent/agent.py dùng (biến môi trường MCP_SERVER_URL)
     from dotenv import load_dotenv
-    load_dotenv()
+
+    load_dotenv(CLIENT_DIR / ".env")
+    load_dotenv(REPO_ROOT / ".env")
     server_url = os.getenv("MCP_SERVER_URL", "http://localhost:8085/mcp")
 
+    async def probe_server() -> tuple[list[str], str]:
+        from fastmcp import Client
+
+        async with Client(server_url, timeout=10.0) as client:
+            tools = await client.list_tools()
+            tool_names = [tool.name for tool in tools]
+            result = await client.call_tool("health_check", {})
+            health_text = result.content[0].text
+            return tool_names, health_text
+
     try:
-        import httpx
+        tool_names, health_text = asyncio.run(probe_server())
+        expected = {"get_current_weather", "get_forecast", "health_check"}
+        missing = expected.difference(tool_names)
+        if missing:
+            print(f"❌ MCP server thiếu tool: {sorted(missing)}")
+            return False
 
-        response = httpx.get(server_url, timeout=10.0)
-        # GET thuần lên endpoint MCP thường bị từ chối (400/405/406) vì thiếu
-        # header/session MCP — nhưng có phản hồi nghĩa là server đang chạy.
-        if response.status_code < 500:
-            print(f"✅ MCP server reachable at {server_url} (HTTP {response.status_code})")
-            return True
-        print(f"⚠️  MCP server returned status {response.status_code}")
-        return False
-
-    except Exception as e:
+        print(f"✅ MCP handshake successful at {server_url}")
+        print(f"   Tools: {', '.join(tool_names)}")
+        print(f"   health_check: {health_text}")
+        if not health_text.startswith("✅"):
+            print("❌ MCP server chưa sẵn sàng gọi WeatherAPI; hãy cấu hình WEATHERAPI_KEY")
+            return False
+        return True
+    except Exception as e:  # noqa: BLE001 - diagnostic must report any connection failure
         print(f"❌ Cannot reach MCP server at {server_url}: {e}")
         print("   Start it: cd ../mcp-server && uv run python weather.py")
         return False
@@ -117,7 +145,7 @@ def check_agent_import():
         print(f"✅ Agent imported successfully: {root_agent.name}")
         print(f"   Model: {root_agent.model}")
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - diagnostic must report any import failure
         print(f"❌ Failed to import agent: {e}")
         return False
 

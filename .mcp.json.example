@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "weather": {
+      "command": "python",
+      "args": [
+        "02-mcp-basics/weather_server.py"
+      ],
+      "env": {}
+    }
+  }
+}
